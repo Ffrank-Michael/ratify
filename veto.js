@@ -1,17 +1,53 @@
+const fs = require("fs");
 const seller = require("./seller");
-const { checkPayment } = require("./guard");
+const { checkPayment, recordPaid } = require("./guard");
 const { sendPayment } = require("./pay");
+
+const RECORD_FILE = "records.json";
+
+// Add one entry to the payment record file
+function saveRecord(entry) {
+  let records = [];
+  if (fs.existsSync(RECORD_FILE)) {
+    records = JSON.parse(fs.readFileSync(RECORD_FILE, "utf8"));
+  }
+  records.push(entry);
+  fs.writeFileSync(RECORD_FILE, JSON.stringify(records, null, 2));
+}
 
 async function vetoPay(label, quote) {
   const decision = checkPayment(quote);
+  const entry = {
+    time: new Date().toISOString(),
+    quoteId: quote.quoteId,
+    seller: quote.seller,
+    item: quote.item,
+    amount: quote.amount,
+    status: "",
+    reason: decision.reason,
+    tx: null
+  };
 
   if (!decision.allowed) {
+    entry.status = "BLOCKED";
+    saveRecord(entry);
     console.log(label + " -> BLOCKED: " + decision.reason);
     return;
   }
 
-  const hash = await sendPayment(quote.seller, quote.amount);
-  console.log(label + " -> PAID " + quote.amount + " NEAR: https://testnet.nearblocks.io/txns/" + hash);
+  try {
+    const hash = await sendPayment(quote.seller, quote.amount);
+    recordPaid(quote);
+    entry.status = "PAID";
+    entry.tx = "https://testnet.nearblocks.io/txns/" + hash;
+    saveRecord(entry);
+    console.log(label + " -> PAID " + quote.amount + " NEAR: " + entry.tx);
+  } catch (err) {
+    entry.status = "FAILED";
+    entry.reason = "Payment failed on NEAR: " + err.message;
+    saveRecord(entry);
+    console.log(label + " -> FAILED: " + err.message);
+  }
 }
 
 async function runDemo() {
