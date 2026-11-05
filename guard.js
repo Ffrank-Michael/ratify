@@ -1,7 +1,7 @@
 const seller = require("./seller");
 
 // The agent's spending limit for the demo
-const BUDGET = 10;
+const BUDGET = 1;
 
 // Running total of what the agent has spent
 let totalSpent = 0;
