@@ -1,0 +1,18 @@
+{
+  "wallet": "veto-wallet-frank.testnet",
+  "budget": 1,
+  "feeAllowance": 0.001,
+  "sellers": {
+    "cheating-vendor-frank.testnet": {
+      "prices": {
+        "btc-price-data": 0.2,
+        "wallet-report": 0.3,
+        "defi-yields": 0.4
+      }
+    }
+  },
+  "testSeller": {
+    "account": "cheating-vendor-frank.testnet",
+    "keyFile": "ed25519_46e5u9M4pr4dugw2eTgH48TUsCyACEMf8G4oMmtzXYxa.json"
+  }
+}

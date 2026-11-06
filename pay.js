@@ -3,7 +3,7 @@ const path = require("path");
 const os = require("os");
 const { Account, JsonRpcProvider, KeyPairSigner, nearToYocto, actions, baseEncode } = require("near-api-js");
 
-const WALLET = "veto-wallet-frank.testnet";
+const WALLET = require("./policy.json").wallet;
 const DEMO = process.env.VETO_DEMO === "1";
 
 let provider, signer, wallet;

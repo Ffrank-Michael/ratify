@@ -1,14 +1,13 @@
-const seller = require("./seller");
 const { signatureIsValid, keyBelongsToSeller } = require("./verify");
 
-// Sellers the owner trusts the agent to pay
-const TRUSTED_SELLERS = ["cheating-vendor-frank.testnet"];
+// The owner's rules: trusted sellers, their agreed prices, the budget
+const policy = require("./policy.json");
 
-// The agent's spending limit for the demo (seller payments plus network fees)
-const BUDGET = 1;
+// The agent's spending limit (seller payments plus network fees)
+const BUDGET = policy.budget;
 
 // Room kept for the network fee, which is only known after paying
-const FEE_ALLOWANCE = 0.001;
+const FEE_ALLOWANCE = policy.feeAllowance;
 
 // What has left the wallet, plus payments still waiting for confirmation
 let totalSpent = 0;
@@ -18,7 +17,8 @@ const usedQuotes = new Set();
 
 async function checkPayment(quote) {
   // Rule A: is this a seller the owner trusts?
-  if (!TRUSTED_SELLERS.includes(quote.seller)) {
+  const sellerRules = policy.sellers[quote.seller];
+  if (!sellerRules) {
     return { allowed: false, reason: "Unknown seller: " + quote.seller + " is not on the owner's trusted list." };
   }
 
@@ -33,12 +33,12 @@ async function checkPayment(quote) {
     return { allowed: false, reason: "Forged quote: NEAR could not confirm this key belongs to " + quote.seller + "." };
   }
 
-  // Veto looks up the real price itself
-  const listedPrice = seller.priceList[quote.item];
+  // Veto looks up the agreed price itself, from the owner's policy
+  const listedPrice = sellerRules.prices[quote.item];
 
   // Rule 0: unknown item?
   if (listedPrice === undefined) {
-    return { allowed: false, reason: "Unknown item: " + quote.item + " is not on the seller's price list." };
+    return { allowed: false, reason: "Unknown item: " + quote.item + " is not on the price list for " + quote.seller + "." };
   }
 
   // Rule 1: already paid, or a payment for it still waiting?
@@ -92,6 +92,10 @@ function loadHistory(records) {
   }
 }
 
-function resetMemory() { totalSpent = 0; usedQuotes.clear(); }
+// Forget everything (used between test runs)
+function resetMemory() {
+  totalSpent = 0;
+  usedQuotes.clear();
+}
 
 module.exports = { checkPayment, reserve, release, addFee, loadHistory, resetMemory };
