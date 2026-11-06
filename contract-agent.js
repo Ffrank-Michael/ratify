@@ -1,43 +1,32 @@
-// The scripted agent, paying through the Veto CONTRACT on NEAR testnet.
+// The scripted agent, paying through the Veto CONTRACT on NEAR testnet, using veto-client.js.
 // The agent's key can only call `pay` on the vault. The contract checks every rule on chain.
 //   node contract-agent.js
 const fs = require("fs");
-const { Account, JsonRpcProvider, KeyPairSigner, teraToGas } = require("near-api-js");
 const seller = require("./seller");
-const { quoteMessage } = require("./verify");
+const { createVeto } = require("./veto-client");
 
-const VAULT = "veto-vault-frank.testnet";
-const agentKey = JSON.parse(fs.readFileSync("agent-key.json", "utf8")).private_key;
-const provider = new JsonRpcProvider({ url: "https://test.rpc.fastnear.com" });
-const agent = new Account(VAULT, provider, KeyPairSigner.fromSecretKey(agentKey));
+const veto = createVeto({
+  vault: "veto-vault-frank.testnet",
+  agentKey: JSON.parse(fs.readFileSync("agent-key.json", "utf8")).private_key
+});
 
-// Ask the contract to pay one quote. Returns "PAID" with a link, or "BLOCKED" with the contract's reason.
+// Used by ai-agent.js: same answer, as { status, detail }
 async function payOnChain(quote) {
-  const message = new TextDecoder().decode(quoteMessage(quote));
-  try {
-    const result = await agent.callFunctionRaw({
-      contractId: VAULT,
-      methodName: "pay",
-      args: { message: message, signature: quote.signature },
-      gas: teraToGas("50")
-    });
-    return { status: "PAID", detail: "https://testnet.nearblocks.io/txns/" + result.transaction.hash };
-  } catch (err) {
-    const text = String(err.message || err);
-    const reason = text.match(/panicked: ([^"\n]*)/);
-    return { status: "BLOCKED", detail: reason ? reason[1] : text.slice(0, 200) };
-  }
+  const r = await veto.pay(quote);
+  return { status: r.status, detail: r.tx || r.reason };
 }
 
 async function show(label, quote) {
-  const r = await payOnChain(quote);
+  const r = await veto.pay(quote);
   console.log(label.padEnd(34) + r.status);
-  console.log("   " + r.detail);
+  console.log("   " + (r.tx || r.reason));
 }
 
 async function run() {
   console.log("");
-  console.log("Paying through the Veto contract on NEAR testnet (" + VAULT + ")");
+  console.log("Paying through the Veto contract on NEAR testnet (veto-vault-frank.testnet)");
+  const before = await veto.budget();
+  console.log("Budget: " + before.budget + " NEAR, already spent: " + before.spent + " NEAR");
   console.log("");
   const first = seller.honestQuote("wallet-report");
   await show("Honest purchase:", first);
@@ -48,8 +37,11 @@ async function run() {
   await show("Amount changed after signing:", seller.tamperedQuote("btc-price-data"));
   await show("Payment redirected to attacker:", seller.redirectedQuote("btc-price-data"));
   await show("Forged quote with a fake key:", seller.forgedQuote("btc-price-data"));
-  await show("Purchase past the budget:", seller.honestQuote("defi-yields"));
+  console.log("");
+  const after = await veto.budget();
+  console.log("Spent now: " + after.spent + " NEAR of " + after.budget + " NEAR");
   console.log("");
 }
 
-module.exports = { payOnChain }; if (require.main === module) run();
+module.exports = { payOnChain };
+if (require.main === module) run();
