@@ -5,7 +5,7 @@ const provider = new JsonRpcProvider({ url: "https://test.rpc.fastnear.com" });
 
 // The exact text a seller signs: every field that matters, always in the same order
 function quoteMessage(quote) {
-  const fields = [quote.quoteId, quote.seller, quote.item, quote.amount, quote.currency, quote.expiresAt];
+  const fields = [quote.quoteId, quote.seller, quote.item, String(quote.amount), quote.currency, String(quote.expiresAt)];
   return new TextEncoder().encode(JSON.stringify(fields));
 }
 
