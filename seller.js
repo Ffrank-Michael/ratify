@@ -11,7 +11,7 @@ let quoteCounter = 0;
 
 function newQuoteId() {
   quoteCounter = quoteCounter + 1;
-  return "q" + quoteCounter;
+  return "q" + quoteCounter + "-" + Date.now();
 }
 
 // Honest: the real price, valid for 5 minutes

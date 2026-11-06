@@ -1,7 +1,6 @@
 const fs = require("fs");
-const seller = require("./seller");
-const { checkPayment, recordPaid } = require("./guard");
-const { sendPayment } = require("./pay");
+const { checkPayment, reserve, release, addFee, loadHistory } = require("./guard");
+const { signPayment, sendSigned } = require("./pay");
 
 const RECORD_FILE = "records.json";
 
@@ -10,20 +9,31 @@ function loadRecords() {
   return JSON.parse(fs.readFileSync(RECORD_FILE, "utf8"));
 }
 
+// Add a new entry, or update it if it is already in the record
 function saveRecord(entry) {
   const records = loadRecords();
-  records.push(entry);
+  const index = records.findIndex(function (r) { return r.id === entry.id; });
+  if (index === -1) records.push(entry);
+  else records[index] = entry;
   fs.writeFileSync(RECORD_FILE, JSON.stringify(records, null, 2));
 }
 
-async function vetoPay(quote) {
+// Rebuild Veto's memory from past payments when it starts
+loadHistory(loadRecords());
+
+let entryCounter = 0;
+
+async function handlePayment(quote) {
   const decision = checkPayment(quote);
+  entryCounter = entryCounter + 1;
   const entry = {
+    id: Date.now() + "-" + entryCounter,
     time: new Date().toISOString(),
     quoteId: quote.quoteId,
     seller: quote.seller,
     item: quote.item,
     amount: quote.amount,
+    fee: 0,
     status: "",
     reason: decision.reason,
     tx: null
@@ -35,37 +45,48 @@ async function vetoPay(quote) {
     return entry;
   }
 
+  // Sign first, so we know the transaction ID before anything is sent
+  let signed;
   try {
-    const hash = await sendPayment(quote.seller, quote.amount);
-    recordPaid(quote);
-    entry.status = "PAID";
-    entry.tx = "https://testnet.nearblocks.io/txns/" + hash;
+    signed = await signPayment(quote.seller, quote.amount);
   } catch (err) {
+    // Nothing was signed or sent, so no money could have moved
     entry.status = "FAILED";
-    entry.reason = "Payment failed on NEAR: " + err.message;
+    entry.reason = "Could not prepare the payment, nothing was sent: " + err.message;
+    saveRecord(entry);
+    return entry;
+  }
+
+  // Lock the quote and hold the money, then save as PENDING before sending
+  reserve(quote);
+  entry.status = "PENDING";
+  entry.reason = "Payment sent, waiting for NEAR to confirm.";
+  entry.tx = "https://testnet.nearblocks.io/txns/" + signed.hash;
+  saveRecord(entry);
+
+  const outcome = await sendSigned(signed);
+  entry.status = outcome.status;
+  entry.fee = outcome.fee;
+  addFee(outcome.fee);
+
+  if (outcome.status === "PAID") {
+    entry.reason = "Payment passed all checks.";
+  } else if (outcome.status === "FAILED") {
+    release(quote);
+    entry.reason = "Payment failed on NEAR: " + outcome.error;
+  } else {
+    entry.reason = "Payment not confirmed yet. This quote stays locked so it cannot be paid twice. " + outcome.error;
   }
   saveRecord(entry);
   return entry;
 }
 
-module.exports = { vetoPay, loadRecords };
-
-// Quick test: only runs when you run this file directly
-if (require.main === module) {
-  async function runDemo() {
-    const first = seller.honestQuote("wallet-report");
-    const tests = [
-      ["1. Honest quote", first],
-      ["2. Charge again", seller.chargeAgain(first)],
-      ["3. Raised price", seller.raisedPriceQuote("btc-price-data")],
-      ["4. Expired quote", seller.expiredQuote("defi-yields")],
-      ["5. Honest quote", seller.honestQuote("defi-yields")],
-      ["6. Over budget", seller.honestQuote("defi-yields")]
-    ];
-    for (const [label, quote] of tests) {
-      const entry = await vetoPay(quote);
-      console.log(label + " -> " + entry.status + ": " + (entry.tx || entry.reason));
-    }
-  }
-  runDemo();
+// Only one payment is handled at a time, so two requests can't both slip under the budget
+let queue = Promise.resolve();
+function vetoPay(quote) {
+  const run = queue.then(function () { return handlePayment(quote); });
+  queue = run.catch(function () {});
+  return run;
 }
+
+module.exports = { vetoPay, loadRecords };

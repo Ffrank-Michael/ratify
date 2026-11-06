@@ -1,13 +1,16 @@
 const seller = require("./seller");
 
-// The agent's spending limit for the demo
+// The agent's spending limit for the demo (seller payments plus network fees)
 const BUDGET = 1;
 
-// Running total of what the agent has spent
+// Room kept for the network fee, which is only known after paying
+const FEE_ALLOWANCE = 0.001;
+
+// What has left the wallet, plus payments still waiting for confirmation
 let totalSpent = 0;
 
-// Quote IDs the agent has already paid for
-const paidQuotes = new Set();
+// Quote IDs that are paid or still pending
+const usedQuotes = new Set();
 
 function checkPayment(quote) {
   // Veto looks up the real price itself
@@ -18,9 +21,9 @@ function checkPayment(quote) {
     return { allowed: false, reason: "Unknown item: " + quote.item + " is not on the seller's price list." };
   }
 
-  // Rule 1: already paid for this quote?
-  if (paidQuotes.has(quote.quoteId)) {
-    return { allowed: false, reason: "Duplicate: quote " + quote.quoteId + " was already paid." };
+  // Rule 1: already paid, or a payment for it still waiting?
+  if (usedQuotes.has(quote.quoteId)) {
+    return { allowed: false, reason: "Duplicate: quote " + quote.quoteId + " was already paid or is still pending." };
   }
 
   // Rule 2: price higher than listed?
@@ -33,18 +36,40 @@ function checkPayment(quote) {
     return { allowed: false, reason: "Expired quote: quote " + quote.quoteId + " is no longer valid." };
   }
 
-  // Rule 4: over budget?
-  if (totalSpent + quote.amount > BUDGET) {
-    return { allowed: false, reason: "Over budget: this would bring spending to " + (totalSpent + quote.amount) + " NEAR, but the limit is " + BUDGET + " NEAR." };
+  // Rule 4: over budget? (including room for the network fee)
+  const after = totalSpent + quote.amount + FEE_ALLOWANCE;
+  if (after > BUDGET) {
+    return { allowed: false, reason: "Over budget: this would bring spending to about " + after.toFixed(3) + " NEAR including fees, but the limit is " + BUDGET + " NEAR." };
   }
 
   return { allowed: true, reason: "Payment passed all checks." };
 }
 
-// Only called after the NEAR payment actually goes through
-function recordPaid(quote) {
+// Called before sending: hold the money and lock the quote
+function reserve(quote) {
   totalSpent = totalSpent + quote.amount;
-  paidQuotes.add(quote.quoteId);
+  usedQuotes.add(quote.quoteId);
 }
 
-module.exports = { checkPayment, recordPaid };
+// Called when we know for sure no money moved
+function release(quote) {
+  totalSpent = totalSpent - quote.amount;
+  usedQuotes.delete(quote.quoteId);
+}
+
+// Called when the network fee is known
+function addFee(fee) {
+  totalSpent = totalSpent + fee;
+}
+
+// On startup, rebuild memory from the saved payment record
+function loadHistory(records) {
+  for (const record of records) {
+    if (record.status === "PAID" || record.status === "PENDING") {
+      totalSpent = totalSpent + record.amount + (record.fee || 0);
+      usedQuotes.add(record.quoteId);
+    }
+  }
+}
+
+module.exports = { checkPayment, reserve, release, addFee, loadHistory };
