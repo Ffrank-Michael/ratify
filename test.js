@@ -72,3 +72,8 @@ test("two payments sent at the same moment cannot both pass the budget", async (
   const paid = results.filter(function (e) { return e.status === "PAID"; }).length;
   assert.strictEqual(paid, 1);
 });
+test("a seller name that only looks like the trusted one is blocked", async () => {
+  const entry = await vetoPay(seller.lookalikeQuote("btc-price-data"));
+  assert.strictEqual(entry.status, "BLOCKED");
+  assert.match(entry.reason, /Unknown seller/);
+});

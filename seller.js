@@ -89,3 +89,10 @@ module.exports = {
   priceList, honestQuote, raisedPriceQuote, expiredQuote, chargeAgain,
   tamperedQuote, redirectedQuote, forgedQuote
 };
+// Attack 7: a seller name that looks almost the same as the trusted one ("0" instead of "o")
+function lookalikeQuote(item) {
+  const quote = makeQuote(item, priceList[item], Date.now() + FIVE_MINUTES, sellerKey);
+  quote.seller = SELLER.replace("vendor", "vend0r");
+  return quote;
+}
+module.exports.lookalikeQuote = lookalikeQuote;

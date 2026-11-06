@@ -279,3 +279,32 @@ mod tests {
         assert_eq!(near_to_yocto("0.25"), 250_000_000_000_000_000_000_000);
     }
 }
+
+#[cfg(test)]
+mod lookalike {
+    use super::*;
+    use ed25519_dalek::{Signer, SigningKey};
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::testing_env;
+
+    // A seller name that looks almost the same as the trusted one ("0" instead of "o")
+    #[test]
+    #[should_panic(expected = "Unknown seller")]
+    fn lookalike_seller_is_blocked() {
+        let vault: AccountId = "veto-vault.testnet".parse().unwrap();
+        let mut b = VMContextBuilder::new();
+        b.current_account_id(vault.clone()).predecessor_account_id(vault.clone()).block_timestamp(1000 * 1_000_000);
+        testing_env!(b.build());
+
+        let key = SigningKey::from_bytes(&[7u8; 32]);
+        let mut v = Veto::new(vault, "1".to_string());
+        let mut prices = BTreeMap::new();
+        prices.insert("btc-price-data".to_string(), "0.2".to_string());
+        let pk = format!("ed25519:{}", near_sdk::bs58::encode(key.verifying_key().to_bytes()).into_string());
+        v.add_seller("cheating-vendor.testnet".parse().unwrap(), pk, prices);
+
+        let msg = near_sdk::serde_json::to_string(&vec!["q9", "cheating-vend0r.testnet", "btc-price-data", "0.2", "NEAR", "5000"]).unwrap();
+        let sig = near_sdk::bs58::encode(key.sign(msg.as_bytes()).to_bytes()).into_string();
+        let _ = v.pay(msg, sig);
+    }
+}
