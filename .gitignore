@@ -1,4 +1,4 @@
 node_modules
 records.json
-records-demo.json
+records-*.json
 .env

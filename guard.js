@@ -92,4 +92,6 @@ function loadHistory(records) {
   }
 }
 
-module.exports = { checkPayment, reserve, release, addFee, loadHistory };
+function resetMemory() { totalSpent = 0; usedQuotes.clear(); }
+
+module.exports = { checkPayment, reserve, release, addFee, loadHistory, resetMemory };
