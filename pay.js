@@ -4,15 +4,19 @@ const os = require("os");
 const { Account, JsonRpcProvider, KeyPairSigner, nearToYocto, actions, baseEncode } = require("near-api-js");
 
 const WALLET = "veto-wallet-frank.testnet";
+const DEMO = process.env.VETO_DEMO === "1";
 
-// Read Veto's wallet key from the file the NEAR tool saved
-const keyFile = path.join(os.homedir(), ".near-credentials", "testnet", WALLET + ".json");
-const privateKey = JSON.parse(fs.readFileSync(keyFile, "utf8")).private_key;
+let provider, signer, wallet;
+if (!DEMO) {
+  // Read Veto's wallet key from the file the NEAR tool saved
+  const keyFile = path.join(os.homedir(), ".near-credentials", "testnet", WALLET + ".json");
+  const privateKey = JSON.parse(fs.readFileSync(keyFile, "utf8")).private_key;
 
-// Connect to NEAR testnet
-const provider = new JsonRpcProvider({ url: "https://test.rpc.fastnear.com" });
-const signer = KeyPairSigner.fromSecretKey(privateKey);
-const wallet = new Account(WALLET, provider, signer);
+  // Connect to NEAR testnet
+  provider = new JsonRpcProvider({ url: "https://test.rpc.fastnear.com" });
+  signer = KeyPairSigner.fromSecretKey(privateKey);
+  wallet = new Account(WALLET, provider, signer);
+}
 
 // Add up the network fee burned by a transaction (converted to NEAR)
 function networkFee(result) {
@@ -25,6 +29,10 @@ function networkFee(result) {
 
 // Step 1: sign the payment. Nothing is sent yet, but we already know its transaction ID.
 async function signPayment(receiverId, amountNear) {
+  if (DEMO) {
+    // Demo mode: no real money, a made-up transaction ID
+    return { hash: "demo-" + Date.now() + "-" + Math.floor(Math.random() * 1000), demo: true };
+  }
   const tx = await wallet.createTransaction({
     receiverId: receiverId,
     actions: [actions.transfer(nearToYocto(String(amountNear)))],
@@ -45,6 +53,7 @@ function readResult(result) {
 // Step 2: send the signed payment.
 // Sending the SAME signed payment again can never pay twice, because NEAR only accepts it once.
 async function sendSigned(signed) {
+  if (DEMO) return { status: "PAID", fee: 0 };
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       if (process.env.SIMULATE_DROP === "1" && attempt === 1) {

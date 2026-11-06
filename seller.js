@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { KeyPair, baseEncode } = require("near-api-js");
-const { quoteMessage } = require("./verify");
+const { quoteMessage, registerDemoKey } = require("./verify");
 
 // The seller's public price list (in NEAR)
 const priceList = {
@@ -14,10 +14,17 @@ const priceList = {
 const SELLER = "cheating-vendor-frank.testnet";
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-// The seller's real key (the one NEAR has on record for this account)
-const keyFile = path.join(os.homedir(), ".near-credentials", "testnet", SELLER,
-  "ed25519_46e5u9M4pr4dugw2eTgH48TUsCyACEMf8G4oMmtzXYxa.json");
-const sellerKey = KeyPair.fromString(JSON.parse(fs.readFileSync(keyFile, "utf8")).private_key);
+let sellerKey;
+if (process.env.VETO_DEMO === "1") {
+  // Demo mode: a made-up seller key, recorded in the pretend chain record
+  sellerKey = KeyPair.fromRandom("ed25519");
+  registerDemoKey(SELLER, sellerKey.getPublicKey().toString());
+} else {
+  // The seller's real key (the one NEAR has on record for this account)
+  const keyFile = path.join(os.homedir(), ".near-credentials", "testnet", SELLER,
+    "ed25519_46e5u9M4pr4dugw2eTgH48TUsCyACEMf8G4oMmtzXYxa.json");
+  sellerKey = KeyPair.fromString(JSON.parse(fs.readFileSync(keyFile, "utf8")).private_key);
+}
 
 let quoteCounter = 0;
 

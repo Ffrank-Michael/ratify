@@ -2,7 +2,7 @@ const fs = require("fs");
 const { checkPayment, reserve, release, addFee, loadHistory } = require("./guard");
 const { signPayment, sendSigned } = require("./pay");
 
-const RECORD_FILE = "records.json";
+const RECORD_FILE = process.env.VETO_DEMO === "1" ? "records-demo.json" : "records.json";
 
 function loadRecords() {
   if (!fs.existsSync(RECORD_FILE)) return [];
@@ -61,7 +61,7 @@ async function handlePayment(quote) {
   reserve(quote);
   entry.status = "PENDING";
   entry.reason = "Payment sent, waiting for NEAR to confirm.";
-  entry.tx = "https://testnet.nearblocks.io/txns/" + signed.hash;
+  entry.tx = signed.demo ? "demo payment, no real money moved" : "https://testnet.nearblocks.io/txns/" + signed.hash;
   saveRecord(entry);
 
   const outcome = await sendSigned(signed);

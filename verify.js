@@ -19,12 +19,20 @@ function signatureIsValid(quote) {
   }
 }
 
+// Demo mode: a pretend chain record, so judges can run Veto without internet or keys
+const DEMO = process.env.VETO_DEMO === "1";
+const demoKeys = new Set();
+function registerDemoKey(accountId, publicKey) {
+  demoKeys.add(accountId + " " + publicKey);
+}
+
 // Keys already confirmed on chain, so we don't ask NEAR every time
 const confirmedKeys = new Set();
 
 // Ask the NEAR chain: does this public key really belong to this seller's account?
 async function keyBelongsToSeller(sellerId, publicKey) {
   const id = sellerId + " " + publicKey;
+  if (DEMO) return demoKeys.has(id) ? { ok: true } : { ok: false, error: "not in demo record" };
   if (confirmedKeys.has(id)) return { ok: true };
   try {
     await provider.viewAccessKey({ accountId: sellerId, publicKey: publicKey });
@@ -35,4 +43,4 @@ async function keyBelongsToSeller(sellerId, publicKey) {
   }
 }
 
-module.exports = { quoteMessage, signatureIsValid, keyBelongsToSeller };
+module.exports = { quoteMessage, signatureIsValid, keyBelongsToSeller, registerDemoKey };
