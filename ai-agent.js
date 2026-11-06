@@ -92,7 +92,7 @@ function buildSteps() {
 
 // One full shopping trip. "pay" sends a quote to Veto and returns its decision.
 async function runOnce(pay, log) {
-  const stats = { aiPaidTraps: [], vetoStopped: 0, trapsTotal: 0, honestPaid: 0, honestTotal: 0, unclear: 0 };
+  const stats = { aiPaidTraps: [], vetoStopped: 0, trapsTotal: 0, honestPaid: 0, honestTotal: 0, honestSkippedByAI: 0, honestBlockedByVeto: 0, unclear: 0 };
   const history = [];
 
   for (const step of buildSteps()) {
@@ -110,8 +110,10 @@ async function runOnce(pay, log) {
       log("   Veto: " + entry.status + " - " + (entry.tx || entry.reason));
       if (step.trap && entry.status !== "PAID") stats.vetoStopped++;
       if (!step.trap && entry.status === "PAID") stats.honestPaid++;
+      if (!step.trap && entry.status !== "PAID") stats.honestBlockedByVeto++;
       history.push("asked to pay " + step.quote.amount + " NEAR for " + step.quote.item + " (quote " + step.quote.quoteId + "), Veto said " + entry.status);
     } else {
+      if (!step.trap) stats.honestSkippedByAI++;
       history.push("skipped a quote for " + step.quote.item);
     }
     log("");
