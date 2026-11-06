@@ -1,3 +1,9 @@
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const { KeyPair, baseEncode } = require("near-api-js");
+const { quoteMessage } = require("./verify");
+
 // The seller's public price list (in NEAR)
 const priceList = {
   "btc-price-data": 0.2,
@@ -7,44 +13,44 @@ const priceList = {
 
 const SELLER = "cheating-vendor-frank.testnet";
 const FIVE_MINUTES = 5 * 60 * 1000;
+
+// The seller's real key (the one NEAR has on record for this account)
+const keyFile = path.join(os.homedir(), ".near-credentials", "testnet", SELLER,
+  "ed25519_46e5u9M4pr4dugw2eTgH48TUsCyACEMf8G4oMmtzXYxa.json");
+const sellerKey = KeyPair.fromString(JSON.parse(fs.readFileSync(keyFile, "utf8")).private_key);
+
 let quoteCounter = 0;
 
-function newQuoteId() {
+// Build a quote and sign it with a key
+function makeQuote(item, amount, expiresAt, key) {
   quoteCounter = quoteCounter + 1;
-  return "q" + quoteCounter + "-" + Date.now();
+  const quote = {
+    quoteId: "q" + quoteCounter + "-" + Date.now(),
+    seller: SELLER,
+    item: item,
+    amount: amount,
+    currency: "NEAR",
+    expiresAt: expiresAt
+  };
+  const signed = key.sign(quoteMessage(quote));
+  quote.publicKey = key.getPublicKey().toString();
+  quote.signature = baseEncode(signed.signature);
+  return quote;
 }
 
-// Honest: the real price, valid for 5 minutes
+// Honest: the real price, valid for 5 minutes, signed by the seller
 function honestQuote(item) {
-  return {
-    quoteId: newQuoteId(),
-    seller: SELLER,
-    item: item,
-    amount: priceList[item],
-    expiresAt: Date.now() + FIVE_MINUTES
-  };
+  return makeQuote(item, priceList[item], Date.now() + FIVE_MINUTES, sellerKey);
 }
 
-// Cheat 1: asks for more than the listed price
+// Cheat 1: the seller signs a price higher than its own price list
 function raisedPriceQuote(item) {
-  return {
-    quoteId: newQuoteId(),
-    seller: SELLER,
-    item: item,
-    amount: priceList[item] * 1.25,
-    expiresAt: Date.now() + FIVE_MINUTES
-  };
+  return makeQuote(item, priceList[item] * 1.25, Date.now() + FIVE_MINUTES, sellerKey);
 }
 
 // Cheat 2: a quote that has already expired
 function expiredQuote(item) {
-  return {
-    quoteId: newQuoteId(),
-    seller: SELLER,
-    item: item,
-    amount: priceList[item],
-    expiresAt: Date.now() - 60 * 1000
-  };
+  return makeQuote(item, priceList[item], Date.now() - 60 * 1000, sellerKey);
 }
 
 // Cheat 3: asks to be paid again for a quote already paid
@@ -52,13 +58,27 @@ function chargeAgain(oldQuote) {
   return oldQuote;
 }
 
-module.exports = { priceList, honestQuote, raisedPriceQuote, expiredQuote, chargeAgain };
-
-// Quick test: only runs when you run this file directly
-if (require.main === module) {
-  const first = honestQuote("wallet-report");
-  console.log("Honest:", first);
-  console.log("Raised price:", raisedPriceQuote("btc-price-data"));
-  console.log("Expired:", expiredQuote("defi-yields"));
-  console.log("Charge again:", chargeAgain(first));
+// Attack 4: someone changes the amount after the seller signed it
+function tamperedQuote(item) {
+  const quote = honestQuote(item);
+  quote.amount = 0.5;
+  return quote;
 }
+
+// Attack 5: someone swaps the seller for their own account
+function redirectedQuote(item) {
+  const quote = honestQuote(item);
+  quote.seller = "attacker-frank.testnet";
+  return quote;
+}
+
+// Attack 6: a fake quote signed with a key that does not belong to the seller
+function forgedQuote(item) {
+  const fakeKey = KeyPair.fromRandom("ed25519");
+  return makeQuote(item, priceList[item], Date.now() + FIVE_MINUTES, fakeKey);
+}
+
+module.exports = {
+  priceList, honestQuote, raisedPriceQuote, expiredQuote, chargeAgain,
+  tamperedQuote, redirectedQuote, forgedQuote
+};

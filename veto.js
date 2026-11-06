@@ -24,7 +24,7 @@ loadHistory(loadRecords());
 let entryCounter = 0;
 
 async function handlePayment(quote) {
-  const decision = checkPayment(quote);
+  const decision = await checkPayment(quote);
   entryCounter = entryCounter + 1;
   const entry = {
     id: Date.now() + "-" + entryCounter,

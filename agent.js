@@ -37,6 +37,18 @@ async function shop() {
   console.log("Agent: Let me ask for a fresh DeFi yield quote.");
   show(await askVetoToPay(seller.honestQuote("defi-yields")));
 
+  console.log("Agent: Buying BTC price data.");
+  console.log("(Someone changes the amount to 0.5 after the seller signed it.)");
+  show(await askVetoToPay(seller.tamperedQuote("btc-price-data")));
+
+  console.log("Agent: Buying BTC price data again.");
+  console.log("(Someone swaps the seller for their own account.)");
+  show(await askVetoToPay(seller.redirectedQuote("btc-price-data")));
+
+  console.log("Agent: Buying BTC price data once more.");
+  console.log("(A fake quote, signed with a key that isn't the seller's.)");
+  show(await askVetoToPay(seller.forgedQuote("btc-price-data")));
+
   console.log("Agent: One more DeFi yield report, please.");
   show(await askVetoToPay(seller.honestQuote("defi-yields")));
 }

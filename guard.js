@@ -1,4 +1,8 @@
 const seller = require("./seller");
+const { signatureIsValid, keyBelongsToSeller } = require("./verify");
+
+// Sellers the owner trusts the agent to pay
+const TRUSTED_SELLERS = ["cheating-vendor-frank.testnet"];
 
 // The agent's spending limit for the demo (seller payments plus network fees)
 const BUDGET = 1;
@@ -12,7 +16,23 @@ let totalSpent = 0;
 // Quote IDs that are paid or still pending
 const usedQuotes = new Set();
 
-function checkPayment(quote) {
+async function checkPayment(quote) {
+  // Rule A: is this a seller the owner trusts?
+  if (!TRUSTED_SELLERS.includes(quote.seller)) {
+    return { allowed: false, reason: "Unknown seller: " + quote.seller + " is not on the owner's trusted list." };
+  }
+
+  // Rule B: was the quote changed after the seller signed it?
+  if (!signatureIsValid(quote)) {
+    return { allowed: false, reason: "Changed or unsigned quote: the signature does not match these details." };
+  }
+
+  // Rule C: does the signing key really belong to the seller, according to NEAR?
+  const keyCheck = await keyBelongsToSeller(quote.seller, quote.publicKey);
+  if (!keyCheck.ok) {
+    return { allowed: false, reason: "Forged quote: NEAR could not confirm this key belongs to " + quote.seller + "." };
+  }
+
   // Veto looks up the real price itself
   const listedPrice = seller.priceList[quote.item];
 
