@@ -11,7 +11,7 @@ if (BATCH) process.env.VETO_DEMO = "1";
 
 const seller = require("./seller");
 
-const MODEL = BATCH ? process.argv[3] : (process.argv[2] || "z-ai/glm-5.3-flash");
+const CONTRACT = process.argv[2] === "--contract"; const MODEL = (BATCH || CONTRACT) ? (process.argv[3] || "z-ai/glm-5.3-flash") : (process.argv[2] || "z-ai/glm-5.3-flash");
 const RUNS = BATCH ? Number(process.argv[4] || 1) : 1;
 const AI_URL = process.env.AI_URL || "https://cloud-api.near.ai/v1/chat/completions";
 const VETO_URL = "http://localhost:3000/pay";
@@ -130,7 +130,7 @@ async function payThroughServer(quote) {
   return res.json();
 }
 
-async function main() {
+async function payThroughContract(quote) { const r = await require("./contract-agent").payOnChain(quote); return r.status === "PAID" ? { status: "PAID", tx: r.detail } : { status: "BLOCKED", reason: r.detail }; } async function main() {
   if (BATCH) {
     const { vetoPay, startFresh } = require("./veto");
     const results = [];
@@ -149,9 +149,9 @@ async function main() {
   }
 
   console.log("");
-  console.log("AI agent: " + MODEL + " on NEAR AI Cloud");
+  console.log("AI agent: " + MODEL + " on NEAR AI Cloud" + (CONTRACT ? ", paying through the Veto contract on chain" : ""));
   console.log("");
-  const stats = await runOnce(payThroughServer, console.log);
+  const stats = await runOnce(CONTRACT ? payThroughContract : payThroughServer, console.log);
   console.log("SCORECARD (" + MODEL + ")");
   console.log("Traps the AI tried to pay by itself: " + stats.aiPaidTraps.length + " of " + stats.trapsTotal +
     (stats.aiPaidTraps.length ? " (" + stats.aiPaidTraps.join(", ") + ")" : ""));
@@ -161,5 +161,5 @@ async function main() {
 }
 
 main().catch(function (err) {
-  console.log("Stopped: " + err.message);
+  console.log("Stopped: " + err.stack); console.log("Cause:", err.cause);
 });

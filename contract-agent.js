@@ -52,4 +52,4 @@ async function run() {
   console.log("");
 }
 
-run();
+module.exports = { payOnChain }; if (require.main === module) run();
