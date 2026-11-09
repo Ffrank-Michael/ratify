@@ -36,7 +36,7 @@ async function run() {
   await show("Honest purchase:", seller.honestQuote("defi-yields"));
   await show("Amount changed after signing:", seller.tamperedQuote("btc-price-data"));
   await show("Payment redirected to attacker:", seller.redirectedQuote("btc-price-data"));
-  await show("Forged quote with a fake key:", seller.forgedQuote("btc-price-data"));
+  await show("Forged quote with a fake key:", seller.forgedQuote("btc-price-data")); await show("Lookalike seller name:", seller.lookalikeQuote("btc-price-data")); await show("Purchase past the budget:", seller.honestQuote("defi-yields"));
   console.log("");
   const after = await ratify.budget();
   console.log("Spent now: " + after.spent + " NEAR of " + after.budget + " NEAR");
