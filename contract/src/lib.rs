@@ -100,8 +100,9 @@ impl Ratify {
         let price = *seller.prices.get(item).unwrap_or_else(|| env::panic_str("Unknown item"));
         require!(amount <= price, "Price raised above the agreed price");
 
-        // Rule D: quote not already paid?
-        require!(!self.used_quotes.contains(&quote_id), "Duplicate: quote already paid");
+        // Rule D: quote not already paid? (remembered per seller, so two sellers can both use "q1")
+        let quote_key = format!("{}:{}", seller_id, quote_id);
+        require!(!self.used_quotes.contains(&quote_key), "Duplicate: quote already paid");
 
         // Rule E: not expired, using the chain's own clock?
         require!(env::block_timestamp_ms() <= expires_at, "Expired quote");
@@ -110,7 +111,7 @@ impl Ratify {
         require!(self.spent + amount <= self.budget, "Over budget");
 
         // All checks passed: lock the quote, count the money, then pay
-        self.used_quotes.insert(quote_id.clone());
+        self.used_quotes.insert(quote_key.clone());
         self.spent += amount;
         env::log_str(&format!("PAID {} yoctoNEAR to {} for quote {}", amount, seller_id, quote_id));
 
@@ -118,17 +119,17 @@ impl Ratify {
             .transfer(NearToken::from_yoctonear(amount))
             .then(Self::ext(env::current_account_id())
                 .with_static_gas(Gas::from_tgas(5))
-                .on_paid(quote_id, amount.to_string()))
+                .on_paid(quote_key, amount.to_string()))
     }
 
     // Runs after the transfer. If it failed, unlock the quote and give the budget back.
     #[private]
-    pub fn on_paid(&mut self, quote_id: String, amount: String) -> bool {
+    pub fn on_paid(&mut self, quote_key: String, amount: String) -> bool {
         let ok = env::promise_result_checked(0, 0).is_ok();
         if !ok {
-            self.used_quotes.remove(&quote_id);
+            self.used_quotes.remove(&quote_key);
             self.spent -= amount.parse::<u128>().unwrap();
-            env::log_str(&format!("Transfer failed for quote {}, budget returned", quote_id));
+            env::log_str(&format!("Transfer failed for quote {}, budget returned", quote_key));
         }
         ok
     }
@@ -136,7 +137,7 @@ impl Ratify {
     // Anyone can read the state
     pub fn get_budget(&self) -> String { self.budget.to_string() }
     pub fn get_spent(&self) -> String { self.spent.to_string() }
-    pub fn is_quote_used(&self, quote_id: String) -> bool { self.used_quotes.contains(&quote_id) }
+    pub fn is_quote_used(&self, seller: AccountId, quote_id: String) -> bool { self.used_quotes.contains(&format!("{}:{}", seller, quote_id)) }
 }
 
 #[cfg(test)]
@@ -270,6 +271,22 @@ mod tests {
         let mut v = setup();
         context(vault(), 1000);
         v.add_seller(shop(), format!("ed25519:{}", near_sdk::bs58::encode([1u8; 32]).into_string()), BTreeMap::new());
+    }
+
+    #[test]
+    fn two_sellers_can_use_the_same_quote_id() {
+        let mut v = setup();
+        let other_key = SigningKey::from_bytes(&[8u8; 32]);
+        let pk = format!("ed25519:{}", near_sdk::bs58::encode(other_key.verifying_key().to_bytes()).into_string());
+        let mut prices = BTreeMap::new();
+        prices.insert("wallet-report".to_string(), "0.3".to_string());
+        v.add_seller("other-shop.testnet".parse().unwrap(), pk, prices);
+        context(vault(), 1000);
+        let (m, s) = quote("q1", "shop.testnet", "wallet-report", "0.3", 5000, &key());
+        let _ = v.pay(m, s);
+        let (m, s) = quote("q1", "other-shop.testnet", "wallet-report", "0.3", 5000, &other_key);
+        let _ = v.pay(m, s);
+        assert_eq!(v.get_spent(), (6 * YOCTO_PER_NEAR / 10).to_string());
     }
 
     #[test]

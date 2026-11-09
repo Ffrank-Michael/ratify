@@ -42,7 +42,7 @@ async function checkPayment(quote) {
   }
 
   // Rule 1: already paid, or a payment for it still waiting?
-  if (usedQuotes.has(quote.quoteId)) {
+  if (usedQuotes.has(quote.seller + ":" + quote.quoteId)) {
     return { allowed: false, reason: "Duplicate: quote " + quote.quoteId + " was already paid or is still pending." };
   }
 
@@ -68,13 +68,13 @@ async function checkPayment(quote) {
 // Called before sending: hold the money and lock the quote
 function reserve(quote) {
   totalSpent = totalSpent + quote.amount;
-  usedQuotes.add(quote.quoteId);
+  usedQuotes.add(quote.seller + ":" + quote.quoteId);
 }
 
 // Called when we know for sure no money moved
 function release(quote) {
   totalSpent = totalSpent - quote.amount;
-  usedQuotes.delete(quote.quoteId);
+  usedQuotes.delete(quote.seller + ":" + quote.quoteId);
 }
 
 // Called when the network fee is known
@@ -87,7 +87,7 @@ function loadHistory(records) {
   for (const record of records) {
     if (record.status === "PAID" || record.status === "PENDING") {
       totalSpent = totalSpent + record.amount + (record.fee || 0);
-      usedQuotes.add(record.quoteId);
+      usedQuotes.add(record.seller + ":" + record.quoteId);
     }
   }
 }
