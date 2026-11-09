@@ -22,7 +22,7 @@ npm run demo
 | `npm run demo` | A shopping agent tries 9 payments. 2 honest ones are paid, 7 traps are blocked, each with a reason. Ends with `Lost to traps with Ratify: 0.00 NEAR` |
 | `cd contract && cargo test` (needs Rust) | 13 contract tests, `13 passed` |
 
-Demo mode uses a made-up seller key and a pretend chain record, so it runs with no internet, no keys and no real money.
+Demo mode uses a made-up seller key and a pretend chain record, so `npm test` and `npm run demo` run with no internet, no keys, no setup and no real money.
 
 ## The problem
 
