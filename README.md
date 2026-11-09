@@ -20,7 +20,7 @@ npm run demo
 |---|---|
 | `npm test` | 11 checks, `pass 11`, `fail 0` |
 | `npm run demo` | A shopping agent tries 9 payments. 2 honest ones are paid, 7 traps are blocked, each with a reason. Ends with `Lost to traps with Ratify: 0.00 NEAR` |
-| `cd contract && cargo test` (needs Rust) | 12 contract tests, `12 passed` |
+| `cd contract && cargo test` (needs Rust) | 13 contract tests, `13 passed` |
 
 Demo mode uses a made-up seller key and a pretend chain record, so it runs with no internet, no keys and no real money.
 
@@ -56,7 +56,7 @@ When the agent asks to pay a quote, the contract checks it on chain:
 | Seller is on the owner's exact trusted list | Payment redirected to another account, including lookalike names like `cheating-vend0r` |
 | Quote is signed by that seller's registered key, and unchanged | Forged quotes, and amounts changed after signing |
 | Item is on the agreed price list, at or below the agreed price | Seller raising the price |
-| Quote ID has not been paid before | Seller asking to be paid again |
+| Quote ID has not been paid before (remembered per seller, so two sellers can both use "q1") | Seller asking to be paid again |
 | Quote has not expired, by the chain's own clock | Paying a stale offer |
 | Total spending stays within the budget | Overspending |
 
@@ -70,6 +70,7 @@ Many tools check how much an agent spends. Ratify also checks whether this parti
 - Contract deployed and set up: [J2GWC2FC...](https://testnet.nearblocks.io/txns/J2GWC2FCHsSyAyZFPnYPucqoFW1vCQxZM4N6z9jUfZqf)
 - Trusted seller registered with its public key and prices: [wCvPfCbg...](https://testnet.nearblocks.io/txns/wCvPfCbgrhsSWzWHyHMFd1Us6ycRzJqiGGyQwoTP16y)
 - Agent key limited to the `pay` method only (see [Check it yourself](#check-it-yourself))
+- Contract updated on 9 November to remember paid quotes per seller: [JDu13ByZ...](https://testnet.nearblocks.io/txns/JDu13ByZ9wMdzvFg44n5V4SuHFWMWp49NWWQqAVPtZyK). The demo transactions below ran just before this change, with the same rules.
 
 **A scripted agent that falls for every trick** (`node contract-agent.js`): 2 honest payments made ([AeaWB6Ue...](https://testnet.nearblocks.io/txns/AeaWB6UexX3SdnQzy9HnZhERsJKnLoMrttHRVnysST5t), [6wXtQ2qZ...](https://testnet.nearblocks.io/txns/6wXtQ2qZAwWJJZKRbVWdiGjps25VXPPUTaubmpwKf4D3)), and 8 traps refused by the contract:
 
