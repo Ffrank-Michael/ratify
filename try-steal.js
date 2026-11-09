@@ -4,7 +4,7 @@
 const fs = require("fs");
 const { Account, JsonRpcProvider, KeyPairSigner, nearToYocto } = require("near-api-js");
 
-const VAULT = "veto-vault-frank.testnet";
+const VAULT = "ratify-vault-frank.testnet";
 const agentKey = JSON.parse(fs.readFileSync("agent-key.json", "utf8")).private_key;
 const provider = new JsonRpcProvider({ url: "https://test.rpc.fastnear.com" });
 const agent = new Account(VAULT, provider, KeyPairSigner.fromSecretKey(agentKey));

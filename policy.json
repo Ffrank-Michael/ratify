@@ -1,5 +1,5 @@
 {
-  "wallet": "veto-wallet-frank.testnet",
+  "wallet": "ratify-wallet-frank.testnet",
   "budget": 1,
   "feeAllowance": 0.001,
   "sellers": {

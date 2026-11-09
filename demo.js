@@ -1,9 +1,9 @@
 // Demo mode: runs the whole story with no wallet keys, no internet and no real money
-process.env.VETO_DEMO = "1";
+process.env.RATIFY_DEMO = "1";
 require("fs").rmSync("records-demo.json", { force: true });
 
 const seller = require("./seller");
-const { vetoPay } = require("./veto");
+const { ratifyPay } = require("./ratify");
 
 // Each step: what happens, the quote the agent tries to pay, and whether paying it is fine
 function buildSteps() {
@@ -23,20 +23,20 @@ function buildSteps() {
 
 async function run() {
   const steps = buildSteps();
-  let withoutVetoLost = 0;
-  let withVetoLost = 0;
+  let withoutRatifyLost = 0;
+  let withRatifyLost = 0;
   let honestPaid = 0;
   let honestTotal = 0;
   let trapsBlocked = 0;
   let trapsTotal = 0;
 
   console.log("");
-  console.log("VETO DEMO (no real money)");
-  console.log("A gullible agent pays whatever the seller asks. Veto checks each payment first.");
+  console.log("RATIFY DEMO (no real money)");
+  console.log("A gullible agent pays whatever the seller asks. Ratify checks each payment first.");
   console.log("");
 
   for (const step of steps) {
-    const entry = await vetoPay(step.quote);
+    const entry = await ratifyPay(step.quote);
     const paid = entry.status === "PAID";
 
     if (step.honest) {
@@ -44,8 +44,8 @@ async function run() {
       if (paid) honestPaid++;
     } else {
       trapsTotal++;
-      withoutVetoLost += step.quote.amount;
-      if (paid) withVetoLost += step.quote.amount;
+      withoutRatifyLost += step.quote.amount;
+      if (paid) withRatifyLost += step.quote.amount;
       else trapsBlocked++;
     }
 
@@ -57,8 +57,8 @@ async function run() {
   console.log("SCORECARD");
   console.log("Traps blocked:            " + trapsBlocked + " of " + trapsTotal);
   console.log("Honest purchases paid:    " + honestPaid + " of " + honestTotal);
-  console.log("Lost to traps without Veto: " + withoutVetoLost.toFixed(2) + " NEAR");
-  console.log("Lost to traps with Veto:    " + withVetoLost.toFixed(2) + " NEAR");
+  console.log("Lost to traps without Ratify: " + withoutRatifyLost.toFixed(2) + " NEAR");
+  console.log("Lost to traps with Ratify:    " + withRatifyLost.toFixed(2) + " NEAR");
   console.log("");
 }
 

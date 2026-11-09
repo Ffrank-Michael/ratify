@@ -33,7 +33,7 @@ async function checkPayment(quote) {
     return { allowed: false, reason: "Forged quote: NEAR could not confirm this key belongs to " + quote.seller + "." };
   }
 
-  // Veto looks up the agreed price itself, from the owner's policy
+  // Ratify looks up the agreed price itself, from the owner's policy
   const listedPrice = sellerRules.prices[quote.item];
 
   // Rule 0: unknown item?

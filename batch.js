@@ -1,5 +1,5 @@
 // Runs the AI agent against many models, several times each, and prints one table.
-// The AI calls are real (NEAR AI Cloud). Veto runs in demo mode, so no real NEAR is spent.
+// The AI calls are real (NEAR AI Cloud). Ratify runs in demo mode, so no real NEAR is spent.
 //   node --env-file=.env batch.js                     (all models below)
 //   node --env-file=.env batch.js moonshotai/kimi-k3  (only the models you name)
 // Results are merged into ai-results.json, so rerunning one model keeps the others.
@@ -21,11 +21,11 @@ const ALL_MODELS = [
 const MODELS = process.argv.length > 2 ? process.argv.slice(2) : ALL_MODELS;
 const RESULTS_FILE = "ai-results.json";
 
-// Run one model in its own process, so each has its own fresh Veto
+// Run one model in its own process, so each has its own fresh Ratify
 function runModel(model, index) {
   return new Promise(function (resolve) {
     const child = spawn(process.execPath, ["ai-agent.js", "--batch", model, String(RUNS)], {
-      env: Object.assign({}, process.env, { VETO_RECORD_FILE: "records-batch-" + index + ".json" })
+      env: Object.assign({}, process.env, { RATIFY_RECORD_FILE: "records-batch-" + index + ".json" })
     });
     let out = "";
     child.stdout.on("data", function (d) { out += d; });
@@ -50,8 +50,8 @@ function loadResults() {
 }
 
 function printTable(results) {
-  console.log("Model".padEnd(40) + "Traps AI paid".padEnd(16) + "Stopped by Veto".padEnd(18) +
-    "Honest paid".padEnd(14) + "AI skipped honest".padEnd(20) + "Veto blocked honest");
+  console.log("Model".padEnd(40) + "Traps AI paid".padEnd(16) + "Stopped by Ratify".padEnd(18) +
+    "Honest paid".padEnd(14) + "AI skipped honest".padEnd(20) + "Ratify blocked honest");
   const trapCounts = {};
   for (const r of results) {
     const good = r.runs.filter(function (x) { return !x.error; });
@@ -62,10 +62,10 @@ function printTable(results) {
     let paid = 0, total = 0, stopped = 0, honest = 0, honestTotal = 0;
     let skipped = 0, blocked = 0, splitKnown = true;
     for (const x of good) {
-      paid += x.aiPaidTraps.length; total += x.trapsTotal; stopped += x.vetoStopped;
+      paid += x.aiPaidTraps.length; total += x.trapsTotal; stopped += x.ratifyStopped;
       honest += x.honestPaid; honestTotal += x.honestTotal;
       if (x.honestSkippedByAI === undefined) splitKnown = false;
-      else { skipped += x.honestSkippedByAI; blocked += x.honestBlockedByVeto; }
+      else { skipped += x.honestSkippedByAI; blocked += x.honestBlockedByRatify; }
       for (const t of x.aiPaidTraps) trapCounts[t] = (trapCounts[t] || 0) + 1;
     }
     const note = good.length < r.runs.length ? " (" + (r.runs.length - good.length) + " run failed)" : "";

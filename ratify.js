@@ -3,7 +3,7 @@ const { checkPayment, reserve, release, addFee, loadHistory, resetMemory } = req
 const { signPayment, sendSigned } = require("./pay");
 
 // Demo mode keeps its own record, so it never mixes with real payments
-const RECORD_FILE = process.env.VETO_RECORD_FILE || (process.env.VETO_DEMO === "1" ? "records-demo.json" : "records.json");
+const RECORD_FILE = process.env.RATIFY_RECORD_FILE || (process.env.RATIFY_DEMO === "1" ? "records-demo.json" : "records.json");
 
 function loadRecords() {
   if (!fs.existsSync(RECORD_FILE)) return [];
@@ -19,7 +19,7 @@ function saveRecord(entry) {
   fs.writeFileSync(RECORD_FILE, JSON.stringify(records, null, 2));
 }
 
-// Rebuild Veto's memory from past payments when it starts
+// Rebuild Ratify's memory from past payments when it starts
 loadHistory(loadRecords());
 
 let entryCounter = 0;
@@ -84,16 +84,16 @@ async function handlePayment(quote) {
 
 // Only one payment is handled at a time, so two requests can't both slip under the budget
 let queue = Promise.resolve();
-function vetoPay(quote) {
+function ratifyPay(quote) {
   const run = queue.then(function () { return handlePayment(quote); });
   queue = run.catch(function () {});
   return run;
 }
 
-// Start fresh: clear the record and Veto's memory (used between test runs)
+// Start fresh: clear the record and Ratify's memory (used between test runs)
 function startFresh() {
   fs.rmSync(RECORD_FILE, { force: true });
   resetMemory();
 }
 
-module.exports = { vetoPay, loadRecords, startFresh };
+module.exports = { ratifyPay, loadRecords, startFresh };

@@ -4,11 +4,11 @@ const os = require("os");
 const { Account, JsonRpcProvider, KeyPairSigner, nearToYocto, actions, baseEncode } = require("near-api-js");
 
 const WALLET = require("./policy.json").wallet;
-const DEMO = process.env.VETO_DEMO === "1";
+const DEMO = process.env.RATIFY_DEMO === "1";
 
 let provider, signer, wallet;
 if (!DEMO) {
-  // Read Veto's wallet key from the file the NEAR tool saved
+  // Read Ratify's wallet key from the file the NEAR tool saved
   const keyFile = path.join(os.homedir(), ".near-credentials", "testnet", WALLET + ".json");
   const privateKey = JSON.parse(fs.readFileSync(keyFile, "utf8")).private_key;
 

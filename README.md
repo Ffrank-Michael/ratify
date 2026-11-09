@@ -1,16 +1,16 @@
-# Veto
+# Ratify
 
 **A payment guard for AI agents on NEAR. The rules live in a smart contract, so an agent can ask to pay, but it can never pay outside the deal.**
 
 Built for the NEAR HACKATHON (AI Security & Defense track).
 
-Live contract on NEAR testnet: [`veto-vault-frank.testnet`](https://testnet.nearblocks.io/address/veto-vault-frank.testnet)
+Live contract on NEAR testnet: [`ratify-vault-frank.testnet`](https://testnet.nearblocks.io/address/ratify-vault-frank.testnet)
 
 ## Try it in one minute (no wallet needed)
 
 ```
-git clone https://github.com/Ffrank-Michael/veto
-cd veto
+git clone https://github.com/Ffrank-Michael/ratify
+cd ratify
 npm install
 npm test
 npm run demo
@@ -19,7 +19,7 @@ npm run demo
 | Do this | You should see |
 |---|---|
 | `npm test` | 10 checks, `pass 10`, `fail 0` |
-| `npm run demo` | A shopping agent tries 9 payments. 2 honest ones are paid, 7 traps are blocked, each with a reason. Ends with `Lost to traps with Veto: 0.00 NEAR` |
+| `npm run demo` | A shopping agent tries 9 payments. 2 honest ones are paid, 7 traps are blocked, each with a reason. Ends with `Lost to traps with Ratify: 0.00 NEAR` |
 | `cd contract && cargo test` (needs Rust) | 11 contract tests, `11 passed` |
 
 Demo mode uses a made-up seller key and a pretend chain record, so it runs with no internet, no keys and no real money.
@@ -33,10 +33,10 @@ AI agents are starting to pay for things on their own. They make costly mistakes
 
 A smarter model is not enough. Agent spending needs rules outside the model.
 
-## How Veto works
+## How Ratify works
 
 ```
- AI agent ──"please pay this quote"──► Veto vault contract (on NEAR)
+ AI agent ──"please pay this quote"──► Ratify vault contract (on NEAR)
  (key can only call pay)                        │
                                checks the seller, signature, price,
                                quote ID, expiry and budget
@@ -47,7 +47,7 @@ A smarter model is not enough. Agent spending needs rules outside the model.
      transaction fails, no money moves              contract pays the seller in NEAR
 ```
 
-The agent's money sits in a vault: a NEAR account running the Veto contract. The agent gets a key to that vault that can do **one thing only**: call `pay`. It cannot send money directly, change the budget, or add sellers. NEAR itself enforces that.
+The agent's money sits in a vault: a NEAR account running the Ratify contract. The agent gets a key to that vault that can do **one thing only**: call `pay`. It cannot send money directly, change the budget, or add sellers. NEAR itself enforces that.
 
 When the agent asks to pay a quote, the contract checks it on chain:
 
@@ -62,7 +62,7 @@ When the agent asks to pay a quote, the contract checks it on chain:
 
 If any check fails, the whole transaction fails and no money moves. If all pass, the contract pays the seller and records the quote as used. If the transfer itself fails, a callback unlocks the quote and returns the budget.
 
-Many tools check how much an agent spends. Veto also checks whether this particular payment matches the deal. An agent may be allowed to spend 1 NEAR, but that does not mean it should pay 0.25 NEAR for something agreed at 0.2.
+Many tools check how much an agent spends. Ratify also checks whether this particular payment matches the deal. An agent may be allowed to spend 1 NEAR, but that does not mean it should pay 0.25 NEAR for something agreed at 0.2.
 
 ## Proof on NEAR testnet
 
@@ -95,7 +95,7 @@ Many tools check how much an agent spends. Veto also checks whether this particu
 
 ### A real model, paying through the contract
 
-We ran an AI shopping agent on NEAR AI Cloud (GPT-6 Luna) against our cheating seller. For each of 9 seller messages, the AI decided by itself whether to pay. Payments it chose went to the Veto contract on NEAR testnet.
+We ran an AI shopping agent on NEAR AI Cloud (GPT-6 Luna) against our cheating seller. For each of 9 seller messages, the AI decided by itself whether to pay. Payments it chose went to the Ratify contract on NEAR testnet.
 
 - The AI paid a **raised price**, reasoning that it was "within the remaining budget". The contract refused it: `Price raised above the agreed price`.
 - The AI paid a **forged quote**. The contract refused it: `Changed or forged quote`.
@@ -105,9 +105,9 @@ Run it yourself with `node --env-file=.env ai-agent.js --contract openai/gpt-6-l
 
 ### 8 models, 3 runs each
 
-To see how common this is, we ran the same agent with 8 models, 3 times each, through Veto's off-chain checker (same rules, payments simulated so no real NEAR moved).
+To see how common this is, we ran the same agent with 8 models, 3 times each, through Ratify's off-chain checker (same rules, payments simulated so no real NEAR moved).
 
-| Model | Traps the AI tried to pay | Stopped by Veto | Honest purchases paid |
+| Model | Traps the AI tried to pay | Stopped by Ratify | Honest purchases paid |
 |---|---|---|---|
 | GLM 5.3 Flash | 3 of 21 (forged quote ×3) | 3 of 3 | 6 of 6 |
 | GPT-6 Luna | 5 of 21 (forged quote ×3, raised price ×2) | 5 of 5 | 6 of 6 |
@@ -121,7 +121,7 @@ To see how common this is, we ran the same agent with 8 models, 3 times each, th
 - **Every model paid the forged quote in every run, 24 of 24.** A forged quote looks exactly like a real one, so no model can spot it by reading. Only a signature check catches it.
 - **Smaller models still made judgment mistakes,** paying a raised price even though they had been given the price list.
 - **Models caught the visible tricks.** No model paid the repeat charge, the expired quote, the changed amount, the redirect or the extra purchase.
-- **Veto never blocked an honest payment.** All 48 went through.
+- **Ratify never blocked an honest payment.** All 48 went through.
 
 Full results: [`ai-results.json`](ai-results.json). Kimi K3 was planned but unavailable on NEAR AI Cloud at the time. The batch cost about $0.23 in NEAR AI Cloud credits.
 
@@ -132,35 +132,35 @@ This is our own small test, not a benchmark. There is one seller, the traps are 
 Anyone can read the live contract with the NEAR CLI, no keys needed:
 
 ```
-near contract call-function as-read-only veto-vault-frank.testnet get_budget json-args '{}' network-config testnet now
-near contract call-function as-read-only veto-vault-frank.testnet get_spent json-args '{}' network-config testnet now
-near account list-keys veto-vault-frank.testnet network-config testnet now
+near contract call-function as-read-only ratify-vault-frank.testnet get_budget json-args '{}' network-config testnet now
+near contract call-function as-read-only ratify-vault-frank.testnet get_spent json-args '{}' network-config testnet now
+near account list-keys ratify-vault-frank.testnet network-config testnet now
 ```
 
 The last one shows the agent's key and its permission: method `pay` only.
 
-You can also see every payment and every refused attempt on the [vault's page on NearBlocks](https://testnet.nearblocks.io/address/veto-vault-frank.testnet). Refused payments show as failed transactions.
+You can also see every payment and every refused attempt on the [vault's page on NearBlocks](https://testnet.nearblocks.io/address/ratify-vault-frank.testnet). Refused payments show as failed transactions.
 
-## Add Veto to your agent
+## Add Ratify to your agent
 
-`veto-client.js` works with any Veto vault. Give it your vault and the agent's `pay`-only key:
+`ratify-client.js` works with any Ratify vault. Give it your vault and the agent's `pay`-only key:
 
 ```js
-const { createVeto } = require("./veto-client");
+const { createRatify } = require("./ratify-client");
 
-const veto = createVeto({ vault: "your-vault.testnet", agentKey: "ed25519:..." }); // your vault and its pay-only key
+const ratify = createRatify({ vault: "your-vault.testnet", agentKey: "ed25519:..." }); // your vault and its pay-only key
 
-const result = await veto.pay(quote);   // quote as signed by the seller
+const result = await ratify.pay(quote);   // quote as signed by the seller
 if (result.status === "BLOCKED") {
-  console.log("Veto refused:", result.reason);
+  console.log("Ratify refused:", result.reason);
 }
 
-console.log(await veto.budget());       // { budget, spent } in NEAR
+console.log(await ratify.budget());       // { budget, spent } in NEAR
 ```
 
 Whatever the agent decides, the contract has the final word. `contract-agent.js` uses exactly this.
 
-## Veto's off-chain checker
+## Ratify's off-chain checker
 
 The repo also includes an off-chain version of the same rules (`server.js`, `guard.js`). We used it for the 8-model tests and for demo mode. It also has two extras:
 
@@ -178,21 +178,21 @@ The contract is the stronger guarantee, because the agent cannot get around it. 
 - **Promises with a callback** to undo a payment that fails
 - **NEAR AI Cloud** for the AI agent, including models running in NEAR AI's private TEE (GLM 5.3 Flash, DeepSeek V4.1 Flash, Qwen 3.8 27B)
 - **near-api-js** and the **NEAR CLI**
-- **Named accounts**: `veto-vault-frank.testnet` (the vault), `cheating-vendor-frank.testnet` (the test seller)
+- **Named accounts**: `ratify-vault-frank.testnet` (the vault), `cheating-vendor-frank.testnet` (the test seller)
 
 ## Files
 
 | File | What it does |
 |---|---|
-| `contract/src/lib.rs` | The Veto smart contract and its tests |
-| `veto-client.js` | Lets any agent pay through a Veto vault |
+| `contract/src/lib.rs` | The Ratify smart contract and its tests |
+| `ratify-client.js` | Lets any agent pay through a Ratify vault |
 | `contract-agent.js` | A scripted agent paying through the contract |
 | `ai-agent.js` | A real AI agent on NEAR AI Cloud (`--contract` to pay through the contract) |
 | `try-steal.js` | Tries to misuse the agent's key |
 | `make-agent-key.js` | Creates the agent's key |
 | `seller.js` | A test seller that cheats in different ways |
 | `verify.js` | The exact text a seller signs, and signature checks |
-| `guard.js`, `veto.js`, `pay.js`, `server.js` | The off-chain checker |
+| `guard.js`, `ratify.js`, `pay.js`, `server.js` | The off-chain checker |
 | `policy.json` | The owner's rules for the off-chain checker |
 | `agent.js` | A scripted agent using the off-chain checker |
 | `batch.js`, `ai-results.json` | The 8-model test and its results |
@@ -203,7 +203,7 @@ The contract is the stronger guarantee, because the agent cannot get around it. 
 
 - **The owner holds the vault's full key.** The owner can change sellers and the budget, and could withdraw the funds. That is the point of being the owner, but it means you trust whoever holds that key.
 - **Sellers are registered by the owner.** The contract cannot look up a seller's keys on the chain by itself, so the owner registers each seller's public key.
-- **Veto cannot confirm delivery.** A seller could take a valid payment and never deliver, then issue a new quote. The budget limits the damage.
+- **Ratify cannot confirm delivery.** A seller could take a valid payment and never deliver, then issue a new quote. The budget limits the damage.
 - **Refused payments still cost a small network fee,** paid from the agent key's fee allowance. That allowance is capped at 1 NEAR.
 - **Testnet only,** with one test seller and no outside security audit.
 

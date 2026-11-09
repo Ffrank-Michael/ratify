@@ -1,31 +1,31 @@
-// The scripted agent, paying through the Veto CONTRACT on NEAR testnet, using veto-client.js.
+// The scripted agent, paying through the Ratify CONTRACT on NEAR testnet, using ratify-client.js.
 // The agent's key can only call `pay` on the vault. The contract checks every rule on chain.
 //   node contract-agent.js
 const fs = require("fs");
 const seller = require("./seller");
-const { createVeto } = require("./veto-client");
+const { createRatify } = require("./ratify-client");
 
-const veto = createVeto({
-  vault: "veto-vault-frank.testnet",
+const ratify = createRatify({
+  vault: "ratify-vault-frank.testnet",
   agentKey: JSON.parse(fs.readFileSync("agent-key.json", "utf8")).private_key
 });
 
 // Used by ai-agent.js: same answer, as { status, detail }
 async function payOnChain(quote) {
-  const r = await veto.pay(quote);
+  const r = await ratify.pay(quote);
   return { status: r.status, detail: r.tx || r.reason };
 }
 
 async function show(label, quote) {
-  const r = await veto.pay(quote);
+  const r = await ratify.pay(quote);
   console.log(label.padEnd(34) + r.status);
   console.log("   " + (r.tx || r.reason));
 }
 
 async function run() {
   console.log("");
-  console.log("Paying through the Veto contract on NEAR testnet (veto-vault-frank.testnet)");
-  const before = await veto.budget();
+  console.log("Paying through the Ratify contract on NEAR testnet (ratify-vault-frank.testnet)");
+  const before = await ratify.budget();
   console.log("Budget: " + before.budget + " NEAR, already spent: " + before.spent + " NEAR");
   console.log("");
   const first = seller.honestQuote("wallet-report");
@@ -38,7 +38,7 @@ async function run() {
   await show("Payment redirected to attacker:", seller.redirectedQuote("btc-price-data"));
   await show("Forged quote with a fake key:", seller.forgedQuote("btc-price-data"));
   console.log("");
-  const after = await veto.budget();
+  const after = await ratify.budget();
   console.log("Spent now: " + after.spent + " NEAR of " + after.budget + " NEAR");
   console.log("");
 }

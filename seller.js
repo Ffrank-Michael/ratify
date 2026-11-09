@@ -15,7 +15,7 @@ const SELLER = "cheating-vendor-frank.testnet";
 const FIVE_MINUTES = 5 * 60 * 1000;
 
 let sellerKey;
-if (process.env.VETO_DEMO === "1") {
+if (process.env.RATIFY_DEMO === "1") {
   // Demo mode: a made-up seller key, recorded in the pretend chain record
   sellerKey = KeyPair.fromRandom("ed25519");
   registerDemoKey(SELLER, sellerKey.getPublicKey().toString());

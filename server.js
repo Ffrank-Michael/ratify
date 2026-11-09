@@ -1,12 +1,12 @@
 const express = require("express");
-const { vetoPay, loadRecords } = require("./veto");
+const { ratifyPay, loadRecords } = require("./ratify");
 
 const app = express();
 app.use(express.json());
 
-// The agent sends a quote here and asks Veto to pay it
+// The agent sends a quote here and asks Ratify to pay it
 app.post("/pay", async function (req, res) {
-  const entry = await vetoPay(req.body);
+  const entry = await ratifyPay(req.body);
   res.json(entry);
 });
 
@@ -16,5 +16,5 @@ app.get("/records", function (req, res) {
 });
 
 app.listen(3000, function () {
-  console.log("Veto is running at http://localhost:3000");
+  console.log("Ratify is running at http://localhost:3000");
 });

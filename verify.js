@@ -19,8 +19,8 @@ function signatureIsValid(quote) {
   }
 }
 
-// Demo mode: a pretend chain record, so judges can run Veto without internet or keys
-const DEMO = process.env.VETO_DEMO === "1";
+// Demo mode: a pretend chain record, so judges can run Ratify without internet or keys
+const DEMO = process.env.RATIFY_DEMO === "1";
 const demoKeys = new Set();
 function registerDemoKey(accountId, publicKey) {
   demoKeys.add(accountId + " " + publicKey);

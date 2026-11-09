@@ -1,8 +1,8 @@
-// Veto client: lets any AI agent pay through a Veto vault on NEAR.
+// Ratify client: lets any AI agent pay through a Ratify vault on NEAR.
 //
-//   const { createVeto } = require("./veto-client");
-//   const veto = createVeto({ vault: "your-vault.testnet", agentKey: "ed25519:..." });
-//   const result = await veto.pay(quote);   // { status: "PAID", tx } or { status: "BLOCKED", reason }
+//   const { createRatify } = require("./ratify-client");
+//   const ratify = createRatify({ vault: "your-vault.testnet", agentKey: "ed25519:..." });
+//   const result = await ratify.pay(quote);   // { status: "PAID", tx } or { status: "BLOCKED", reason }
 //
 // The agent key must be a key on the vault that can only call `pay`.
 const { Account, JsonRpcProvider, KeyPairSigner, teraToGas } = require("near-api-js");
@@ -10,7 +10,7 @@ const { quoteMessage } = require("./verify");
 
 const YOCTO_PER_NEAR = 1e24;
 
-function createVeto({ vault, agentKey, rpcUrl }) {
+function createRatify({ vault, agentKey, rpcUrl }) {
   const provider = new JsonRpcProvider({ url: rpcUrl || "https://test.rpc.fastnear.com" });
   const agent = new Account(vault, provider, KeyPairSigner.fromSecretKey(agentKey));
 
@@ -42,4 +42,4 @@ function createVeto({ vault, agentKey, rpcUrl }) {
   return { pay, budget };
 }
 
-module.exports = { createVeto };
+module.exports = { createRatify };

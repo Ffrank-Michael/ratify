@@ -1,4 +1,4 @@
-// Veto contract: the payment rules run on the NEAR chain itself.
+// Ratify contract: the payment rules run on the NEAR chain itself.
 // The agent gets a key that can only call `pay`. It can ask, but it cannot spend outside the rules.
 use near_sdk::store::{LookupMap, LookupSet};
 use near_sdk::{env, near, require, AccountId, Gas, NearToken, PanicOnDefault, Promise};
@@ -15,7 +15,7 @@ pub struct Seller {
 
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
-pub struct Veto {
+pub struct Ratify {
     owner: AccountId,
     budget: u128,
     spent: u128,
@@ -44,7 +44,7 @@ fn parse_public_key(text: &str) -> [u8; 32] {
 }
 
 #[near]
-impl Veto {
+impl Ratify {
     // Set up the vault. `budget` is in NEAR, like "1".
     #[init]
     pub fn new(owner: AccountId, budget: String) -> Self {
@@ -146,7 +146,7 @@ mod tests {
     use near_sdk::test_utils::VMContextBuilder;
     use near_sdk::testing_env;
 
-    fn vault() -> AccountId { "veto-vault.testnet".parse().unwrap() }
+    fn vault() -> AccountId { "ratify-vault.testnet".parse().unwrap() }
     fn owner() -> AccountId { "owner.testnet".parse().unwrap() }
     fn shop() -> AccountId { "shop.testnet".parse().unwrap() }
 
@@ -159,9 +159,9 @@ mod tests {
 
     fn key() -> SigningKey { SigningKey::from_bytes(&[7u8; 32]) }
 
-    fn setup() -> Veto {
+    fn setup() -> Ratify {
         context(owner(), 1000);
-        let mut v = Veto::new(owner(), "1".to_string());
+        let mut v = Ratify::new(owner(), "1".to_string());
         let pk = format!("ed25519:{}", near_sdk::bs58::encode(key().verifying_key().to_bytes()).into_string());
         let mut prices = BTreeMap::new();
         prices.insert("wallet-report".to_string(), "0.3".to_string());
@@ -291,13 +291,13 @@ mod lookalike {
     #[test]
     #[should_panic(expected = "Unknown seller")]
     fn lookalike_seller_is_blocked() {
-        let vault: AccountId = "veto-vault.testnet".parse().unwrap();
+        let vault: AccountId = "ratify-vault.testnet".parse().unwrap();
         let mut b = VMContextBuilder::new();
         b.current_account_id(vault.clone()).predecessor_account_id(vault.clone()).block_timestamp(1000 * 1_000_000);
         testing_env!(b.build());
 
         let key = SigningKey::from_bytes(&[7u8; 32]);
-        let mut v = Veto::new(vault, "1".to_string());
+        let mut v = Ratify::new(vault, "1".to_string());
         let mut prices = BTreeMap::new();
         prices.insert("btc-price-data".to_string(), "0.2".to_string());
         let pk = format!("ed25519:{}", near_sdk::bs58::encode(key.verifying_key().to_bytes()).into_string());
